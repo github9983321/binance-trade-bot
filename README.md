@@ -171,3 +171,27 @@ If you plan to use real money, USE AT YOUR OWN RISK.
 Under no circumstances will I be held responsible or liable in any way for any
 claims, damages, losses, expenses, costs, or liabilities whatsoever, including,
 without limitation, any direct or indirect damages for loss of profits.
+
+===
+
+使用步骤：
+1. 将所有.py文件复制到项目的binance_trade_bot子目录。
+2. 修改binance_trade_bot子目录的__main__.py，将第一行改为：
+from .crypto_trading_new import main
+这样启动交易机器人时，实际执行的是crypto_trading_new.py的main函数。
+3. 对照user.cfg.example文件修改user.cfg，加入websocket的ramdisk配置项。ramdisk是用来保存从websocket获取到的数据的目录，可以为任意目录。Linux上的/dev/shm 及其下属目录实际在内存中，比普通的硬盘目录要快很多，可以把ramdisk创建在这个目录下。
+4. 在启动交易机器人之前，需要先启动websocket_reader：
+python3 -m binance_trade_bot.binance_websocket_reader
+5. 启动交易机器人的方法不变：
+python3 -m binance_trade_bot
+
+设计思路说明：
+1. 不直接修改原作者代码，以便未来与原作者新代码做合并。采用实现子类的方式修改原作者代码。
+binance_api_manager_new.py 为 binance_api_manager.py 的子类。
+binance_client_new.py 为 binance.client 的子类。
+config_new.py 为 config.py 的子类。
+2. 从websocket可获取三类数据，存入ramdisk的子目录：价格相关数据存入ticker子目录，订单相关数据存入order子目录，账户余额相关数据存入account子目录。使用file_task.py中的计划任务来清理三个目录中时间久远的文件，不至于积累过多文件。
+3. binance_client_new.py 中，覆盖父类的对应函数，获取价格、订单、账户余额相关的数据。首先查找websocket保存的数据，找不到则调用父类的同名函数，改为原先调用RESTful API查询的方式。
+4. binance_api_manager_new.py 中，覆盖父类的对应函数，调用binance_client_new.py中的新增函数。
+5. 运行两个进程，一个websocket reader进程获取websocket数据，另外一个trade bot进程执行交易机器人。两个进程通过保存的文件来协作。采用这种方式实现比较健壮，对原先代码的修改也最小，可以利用标准OOP继承的方式来实现。
+
