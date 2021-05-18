@@ -1,4 +1,4 @@
-from .crypto_trading import main
+from .crypto_trading_new import main
 
 if __name__ == "__main__":
     try:
